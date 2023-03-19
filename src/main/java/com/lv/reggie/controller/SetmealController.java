@@ -3,6 +3,7 @@ package com.lv.reggie.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lv.reggie.common.R;
+import com.lv.reggie.dto.DishDto;
 import com.lv.reggie.dto.SetmealDto;
 import com.lv.reggie.entity.Category;
 import com.lv.reggie.entity.Setmeal;
@@ -31,9 +32,6 @@ public class SetmealController {
     private SetmealService setmealService;
 
     @Autowired
-    private SetmealDishService setmealDishService;
-
-    @Autowired
     private CategoryService categoryService;
 
     /**
@@ -50,6 +48,32 @@ public class SetmealController {
     }
 
     /**
+     * 根据套餐id查询对应的套餐信息和对应的菜品信息
+     * @param id
+     * @return
+     */
+    @GetMapping("/{id}")
+    public R<SetmealDto> get(@PathVariable Long id) {
+        SetmealDto setmealDto = setmealService.getByIdWithDish(id);
+        //获取套餐名称
+        Category category = categoryService.getById(setmealDto.getCategoryId());
+        setmealDto.setCategoryName(category.getName());
+        return R.success(setmealDto);
+    }
+
+    /**
+     * 修改套餐信息
+     * @return
+     */
+    @PutMapping
+    @CacheEvict(value = "setmealCache", allEntries = true)
+    public R<String> update(@RequestBody SetmealDto setmealDto) {
+        log.info(setmealDto.toString());
+        setmealService.updateWithDish(setmealDto);
+        return R.success("修改套餐成功！");
+    }
+
+    /**
      * 分页查询套餐列表
      * @param page
      * @param pageSize
@@ -57,7 +81,7 @@ public class SetmealController {
      * @return
      */
     @GetMapping("page")
-    R<Page> page(int page, int pageSize, String name) {
+    public R<Page> page(int page, int pageSize, String name) {
         Page<Setmeal> pageInfo = new Page<>(page, pageSize);
         Page<SetmealDto> dtoPage = new Page<>();
 
@@ -136,6 +160,7 @@ public class SetmealController {
      * @return
      */
     @PostMapping("/status/{status}")
+    @CacheEvict(value = "setmealCache", allEntries = true)
     public R<String> haltSalesDish(@PathVariable Integer status, String ids) {
         //获取要停售的菜品id
         List<Long> idList = new ArrayList<>();

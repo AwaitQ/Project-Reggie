@@ -5,12 +5,14 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lv.reggie.common.CustomException;
 import com.lv.reggie.dto.SetmealDto;
 import com.lv.reggie.entity.Dish;
+import com.lv.reggie.entity.DishFlavor;
 import com.lv.reggie.entity.Setmeal;
 import com.lv.reggie.entity.SetmealDish;
 import com.lv.reggie.mapper.SetMealMapper;
 import com.lv.reggie.service.SetmealDishService;
 import com.lv.reggie.service.SetmealService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -94,5 +96,49 @@ public class SetmealServiceImpl extends ServiceImpl<SetMealMapper, Setmeal> impl
         }
         this.updateBatchById(setmealList);
 
+    }
+
+    /**
+     * 获得套餐和对应菜品信息
+     * @param id
+     * @return
+     */
+    @Override
+    public SetmealDto getByIdWithDish(Long id) {
+        //查询套餐基本信息，setmeal表查询
+        Setmeal setmeal = this.getById(id);
+
+        SetmealDto setmealDto = new SetmealDto();
+        BeanUtils.copyProperties(setmeal, setmealDto);
+
+        //查询当前套餐对应的菜品信息，从setmeal_dish表查询
+        LambdaQueryWrapper<SetmealDish> queryWrapper = new LambdaQueryWrapper();
+        queryWrapper.eq(SetmealDish::getSetmealId, setmeal.getId());
+        List<SetmealDish> dishList = setmealDishService.list(queryWrapper);
+        setmealDto.setSetmealDishes(dishList);
+        return setmealDto;
+    }
+
+    /**
+     * 修改套餐和对应菜品信息
+     */
+    @Override
+    public void updateWithDish(SetmealDto setmealDto) {
+        //更新套餐基本信息
+        this.updateById(setmealDto);
+
+        //清理当前套餐对应菜品数据---setmeal_dish表的delete操作
+        LambdaQueryWrapper<SetmealDish> queryWrapper = new LambdaQueryWrapper();
+        queryWrapper.eq(SetmealDish::getSetmealId, setmealDto.getId());
+
+        setmealDishService.remove(queryWrapper);
+
+        //添加当前提交过来的菜品数据---setmeal_dish表的insert操作
+        List<SetmealDish> dishes = setmealDto.getSetmealDishes();
+        dishes = dishes.stream().map((item) -> {
+            item.setSetmealId(setmealDto.getId());
+            return item;
+        }).collect(Collectors.toList());
+        setmealDishService.saveBatch(dishes);
     }
 }
