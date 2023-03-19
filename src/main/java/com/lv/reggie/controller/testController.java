@@ -8,6 +8,5 @@ public class testController {
         System.out.println("test dev-002");
         System.out.println("test dev-003");
         System.out.println("test master-003");
-        System.out.println("test remote-master04");
     }
 }
